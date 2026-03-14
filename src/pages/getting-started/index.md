@@ -17,19 +17,19 @@ Learn how to authenticate requests to Workflow Builder API.
 
 Every request made to Workflow Builder API must include an encrypted access token.
 
-Your secure, server-side application retrieves an access token by making a request to the [Adobe Identity Management System (IMS)][1] with your **Client ID** and **Client Secret**.
+Your secure, server-side application retrieves an access token by making a request to the [Adobe Identity Management System (IMS)](https://www.adobe.com/content/dam/cc/en/trust-center/ungated/whitepapers/corporate/adobe-identity-management-services-security-overview.pdf) with your **Client ID** and **Client Secret**.
 
 ## Prerequisites
 
 This tutorial assumes you have worked with your Adobe representative and have the following:
 
-- An [Adobe Developer Console][2] account.
-- A [project][3] with Workflow Builder API [OAuth Server-to-Server credentials set up][4].
-- Access to your **Client ID** and **Client Secret** from the [Adobe Developer Console project][5]. Securely store these credentials and never expose them in client-side or public code.
+- An [Adobe Developer Console](https://developer.adobe.com/) account.
+- A [project](https://developer.adobe.com/developer-console/docs/guides/projects/projects-empty/) with Workflow Builder API [OAuth Server-to-Server credentials set up](https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/).
+- Access to your **Client ID** and **Client Secret** from the [Adobe Developer Console project](https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/#api-overview). Securely store these credentials and never expose them in client-side or public code.
 
 ## Retrieve an access token
 
-A temporary access token validates calls to the API. You can [generate an access token can directly in the Developer Console][8], or programmatically by following the steps below.
+A temporary access token validates calls to the API. You can [generate an access token directly in the Developer Console](https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s#generate-token), or programmatically by following the steps below.
 
 1. Open a secure terminal and export your **Client ID** and **Client Secret** as environment variables so that later commands can access them:
 
@@ -66,11 +66,3 @@ A temporary access token validates calls to the API. You can [generate an access
   ```bash
   export WFB_ACCESS_TOKEN=<Your_Access_Token>
   ```
-
-\<!-- Links --\>
-[1]: https://www.adobe.com/content/dam/cc/en/trust-center/ungated/whitepapers/corporate/adobe-identity-management-services-security-overview.pdf
-[2]: https://developer.adobe.com/
-[3]: https://developer.adobe.com/developer-console/docs/guides/projects/projects-empty/
-[4]: https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/
-[5]: https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/#api-overview
-[8]: https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s#generate-token
