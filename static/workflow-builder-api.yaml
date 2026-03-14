@@ -1,0 +1,702 @@
+openapi: 3.0.3
+info:
+  title: FFE Run Workflow Service API
+  version: 0.1.0
+  description: |
+    Firefly's Workflow Builder API for executing workflows over multiple assets and managing batch jobs.
+  license:
+    name: Adobe Creative API License
+    url: https://www.adobe.com/content/dam/cc/en/legal/terms/enterprise/pdfs/PSLT-AdobeCreativeAPI-WW-2024v2.pdf
+
+servers:
+  - url: https://run-workflow.adobe.io
+    description: Production environment (Adobe.io).
+
+paths:
+  /batch/execute:
+    post:
+      summary: Execute a batch of assets through a workflow
+      description: |
+        Start a new batch job to process multiple assets through a published workflow.
+
+        The workflow definition should include all images in the `input-images` action's parameters.
+        Each image will be processed separately through the workflow in parallel chunks.
+
+        Returns a `batchId` that can be used to track progress and retrieve results.
+      operationId: batchExecute
+      security:
+        - ApiKeyAuth: []
+          BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/ApiKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workflowId
+                - workflow
+              properties:
+                workflowId:
+                  type: string
+                  description: Workflow identifier for tracking and reference.
+                  example: "my-remove-bg-workflow"
+                workflow:
+                  type: object
+                  description: Complete workflow definition with actions and connections.
+                  required:
+                    - actions
+                    - connections
+                  properties:
+                    metadata:
+                      type: object
+                      properties:
+                        workflowId:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                    actions:
+                      type: array
+                      description: Array of workflow actions (must include input-images action with all images).
+                      items:
+                        type: object
+                    connections:
+                      type: array
+                      description: Array of connections between actions.
+                      items:
+                        type: object
+                batchConfig:
+                  type: object
+                  properties:
+                    concurrencyLimit:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      default: 10
+                      description: Maximum number of parallel executions per chunk.
+                    priority:
+                      type: string
+                      enum: [HIGH, NORMAL, LOW]
+                      default: NORMAL
+                      description: Batch priority for fair-share throttling.
+                    continueOnError:
+                      type: boolean
+                      default: true
+                      description: Continue processing remaining assets if some fail.
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                    description: Unique batch identifier.
+                    example: "batch-my-workflow-20250127-abc12345"
+                  workflowId:
+                    type: string
+                    description: Workflow identifier.
+                  status:
+                    type: string
+                    enum: [pending, running, completed, failed, cancelled]
+                    description: Current batch status.
+                  orchestratorInstanceId:
+                    type: string
+                    description: Durable Functions orchestrator instance ID.
+                  assets:
+                    $ref: '#/components/schemas/BatchAssetCounts'
+                  config:
+                    $ref: '#/components/schemas/BatchConfig'
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: Batch creation timestamp.
+                  links:
+                    type: object
+                    properties:
+                      status:
+                        type: object
+                        properties:
+                          href:
+                            type: string
+                            description: URL to check batch status.
+                      cancel:
+                        type: object
+                        properties:
+                          href:
+                            type: string
+                            description: URL to cancel batch.
+                      executions:
+                        type: object
+                        properties:
+                          href:
+                            type: string
+                            description: URL to list batch executions.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /batches:
+    get:
+      summary: List batches
+      description: |
+        List all batches created by the authenticated user within their organization.
+
+        Results are automatically filtered by the authenticated user's ID.
+        Users can only view their own batches, not batches created by other users in the organization.
+
+        Results are sorted by creation date (most recent first) and include pagination metadata.
+      operationId: listBatches
+      security:
+        - ApiKeyAuth: []
+          BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/ApiKey'
+        - name: status
+          in: query
+          description: Filter by batch status.
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+        - name: workflowId
+          in: query
+          description: Filter by workflow ID.
+          schema:
+            type: string
+        - name: createdAfter
+          in: query
+          description: Filter by creation date (ISO 8601 format).
+          schema:
+            type: string
+            format: date-time
+        - name: createdBefore
+          in: query
+          description: Filter by creation date (ISO 8601 format).
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Maximum number of results per page (default 50, max 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Pagination offset (default 0).
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orgId:
+                    type: string
+                    description: Organization ID.
+                  batches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchMetadata'
+                  pagination:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        description: Maximum results per page.
+                      offset:
+                        type: integer
+                        description: Current offset.
+                      count:
+                        type: integer
+                        description: Number of batches in current page.
+                      hasMore:
+                        type: boolean
+                        description: Whether more results are available.
+                  filters:
+                    type: object
+                    description: Applied filters.
+                    properties:
+                      status:
+                        type: string
+                      workflowId:
+                        type: string
+                      createdAfter:
+                        type: string
+                      createdBefore:
+                        type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /batch/{batchId}/status:
+    get:
+      summary: Get batch status
+      description: |
+        Get the current status and progress of a batch job.
+
+        Returns detailed information including:
+        - Overall batch status (pending, running, completed, failed, cancelled)
+        - Asset progress counters (total, completed, failed, pending, processing)
+        - Execution statistics
+        - Timing information and estimates
+        - Configuration details
+      operationId: getBatchStatus
+      security:
+        - ApiKeyAuth: []
+          BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/ApiKey'
+        - name: batchId
+          in: path
+          required: true
+          description: Batch identifier.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /batch/{batchId}/cancel:
+    post:
+      summary: Cancel a batch
+      description: |
+        Cancel a batch job that is currently pending or running.
+
+        Once cancelled, no new assets will be processed. Assets currently being
+        processed may complete. The batch status will be updated to 'cancelled'.
+
+        Cannot cancel batches that are already completed, failed, or cancelled.
+      operationId: cancelBatch
+      security:
+        - ApiKeyAuth: []
+          BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/ApiKey'
+        - name: batchId
+          in: path
+          required: true
+          description: Batch identifier.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [cancelled]
+                  message:
+                    type: string
+                  previousStatus:
+                    type: string
+                  assets:
+                    $ref: '#/components/schemas/BatchAssetCounts'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /batch/{batchId}/executions:
+    get:
+      summary: List individual execution results
+      description: |
+        List all individual asset execution results within a batch, with optional filtering.
+
+        Returns detailed results for each asset including:
+        - Execution status (pending, running, success, failed)
+        - Input asset data
+        - Output results (if successful)
+        - Error messages (if failed)
+        - Timing information
+
+        The response supports pagination and filtering by execution status.
+      operationId: listBatchExecutions
+      security:
+        - ApiKeyAuth: []
+          BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/ApiKey'
+        - name: batchId
+          in: path
+          required: true
+          description: Batch identifier.
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by execution status.
+          schema:
+            type: string
+            enum: [pending, running, success, failed]
+        - name: limit
+          in: query
+          description: Maximum number of results (default 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: offset
+          in: query
+          description: Pagination offset (default 0).
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                  total:
+                    type: integer
+                    description: Total number of assets in batch.
+                  executions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BatchExecutionResult'
+                  pagination:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+                      count:
+                        type: integer
+                      hasMore:
+                        type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for authentication.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token for authorization.
+
+  parameters:
+    OrgId:
+      name: x-gw-ims-org-id
+      in: header
+      required: true
+      description: Organization ID for the request.
+      schema:
+        type: string
+
+    UserId:
+      name: x-gw-ims-user-id
+      in: header
+      required: true
+      description: User ID for the request.
+      schema:
+        type: string
+
+    ApiKey:
+      name: x-api-key
+      in: header
+      required: true
+      description: API key for authentication.
+      schema:
+        type: string
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message.
+        message:
+          type: string
+          description: Additional error details.
+        status:
+          type: string
+          enum:
+            - failed
+          description: Error status.
+
+    BatchConfig:
+      type: object
+      description: Batch configuration options.
+      properties:
+        concurrencyLimit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Maximum concurrent executions per chunk.
+        priority:
+          type: string
+          enum: [HIGH, NORMAL, LOW]
+          default: NORMAL
+          description: Batch priority for fair-share throttling.
+        continueOnError:
+          type: boolean
+          default: true
+          description: Continue processing remaining assets if some fail.
+        webhookUrl:
+          type: string
+          format: uri
+          description: Optional webhook URL for completion notification.
+
+    BatchAssetCounts:
+      type: object
+      description: Asset counts for batch progress tracking.
+      properties:
+        total:
+          type: integer
+          description: Total number of assets in the batch.
+        pending:
+          type: integer
+          description: Assets waiting to be processed.
+        processing:
+          type: integer
+          description: Assets currently being processed.
+        completed:
+          type: integer
+          description: Successfully completed assets.
+        failed:
+          type: integer
+          description: Failed assets.
+
+    BatchMetadata:
+      type: object
+      description: Batch metadata and status.
+      properties:
+        batchId:
+          type: string
+          description: Unique batch identifier.
+          example: "batch-my-workflow-20250127-abc12345"
+        workflowId:
+          type: string
+          description: Workflow ID being executed.
+        orgId:
+          type: string
+          description: Organization ID.
+        userId:
+          type: string
+          description: User ID who created the batch.
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+          description: Current batch status.
+        config:
+          $ref: '#/components/schemas/BatchConfig'
+        assets:
+          $ref: '#/components/schemas/BatchAssetCounts'
+        executions:
+          type: object
+          description: Execution tracking.
+          properties:
+            total:
+              type: integer
+              description: Total number of executions.
+            completed:
+              type: integer
+              description: Completed executions (success + failed).
+            failed:
+              type: integer
+              description: Failed execution count.
+            failedExecutionIds:
+              type: array
+              description: List of failed execution IDs for easy retry.
+              items:
+                type: string
+        timing:
+          type: object
+          description: Timing information.
+          properties:
+            estimatedTimeRemainingMs:
+              type: integer
+              description: Estimated time remaining in milliseconds.
+            averageExecutionTimeMs:
+              type: number
+              description: Average execution time per asset in milliseconds.
+        endpoint:
+          type: string
+          enum: [preview, execute]
+          description: Endpoint type.
+        createdAt:
+          type: string
+          format: date-time
+          description: Batch creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+        completedAt:
+          type: string
+          format: date-time
+          description: Completion timestamp.
+        links:
+          type: object
+          description: Related resource links.
+          properties:
+            cancel:
+              type: object
+              properties:
+                href:
+                  type: string
+            executions:
+              type: object
+              properties:
+                href:
+                  type: string
+
+    BatchExecutionResult:
+      type: object
+      description: Individual execution result within a batch.
+      properties:
+        executionId:
+          type: string
+          description: Execution ID.
+        batchId:
+          type: string
+          description: Batch ID this execution belongs to.
+        assetIndex:
+          type: integer
+          description: Asset index in the batch.
+        inputAsset:
+          type: object
+          description: Input asset data.
+          properties:
+            index:
+              type: integer
+            assetId:
+              type: string
+            inputs:
+              type: array
+              items:
+                type: object
+        status:
+          type: string
+          enum: [pending, running, success, failed]
+          description: Execution status.
+        error:
+          type: string
+          description: Error message if failed.
+        outputs:
+          type: array
+          description: Output results if successful.
+          items:
+            type: object
+        startedAt:
+          type: string
+          format: date-time
+          description: Execution start time.
+        completedAt:
+          type: string
+          format: date-time
+          description: Execution completion time.
+        durationMs:
+          type: integer
+          description: Duration in milliseconds.
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Invalid request"
+            message: "Request body is not valid JSON"
+            status: "failed"
+
+    NotFound:
+      description: Requested Resource Was Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Not found"
+            message: "Batch not found"
+            status: "failed"
+
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            message: "An unexpected error occurred"
+            status: "failed"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unauthorized"
+            message: "Missing or invalid authentication"
+            status: "failed"

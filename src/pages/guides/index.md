@@ -1,24 +1,100 @@
 ---
-title: Guides - Analytics
-description: This is the guides overview page of  Analytics 
+title: Workflow Builder Feature Guide
+description: Learn how Workflow Builder API lets you execute workflows over multiple assets and manage batch jobs.
+hideBreadcrumbNav: true
+keywords:
+  - workflow
+  - batch
+  - features
+  - feature guide
+  - Firefly
+  - assets
+  - execute
 ---
 
-# Get Started
+# Workflow Builder feature guide
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam malesuada feugiat enim vel facilisis. Nunc eget enim eu lacus lobortis tincidunt a nec est. Nunc quis sapien quis orci rutrum sollicitudin. Nullam vehicula ultricies mauris, id aliquam justo aliquam vitae. Nam quis tincidunt ante. Curabitur sagittis aliquam elit, at auctor enim maximus et. Praesent in lectus facilisis, tempor magna eget, bibendum est. In quis ornare mi. Donec vestibulum viverra magna, non mollis leo vestibulum sit amet. Aenean euismod nulla augue, sit amet vehicula nibh faucibus vel. Fusce at est lacus. Nullam ante nulla, elementum nec ornare in, placerat luctus enim. Suspendisse vitae lacinia nibh. Pellentesque porta accumsan est at volutpat. Nulla aliquam dictum faucibus.
+The Workflow Builder API (Firefly Creative Production for Enterprise) lets you execute workflows over multiple assets and manage batch jobs. You start a batch with a workflow and a set of images or videos, then monitor progress and retrieve results per asset.
 
-## Authentication
+This feature guide offers an overview for using the API endpoints. For the full technical details, see the [API reference](../api/index.md).
 
-Mauris pellentesque ornare nulla. Proin fermentum elementum velit non consequat. Donec euismod nisl sed tellus sagittis, a consequat leo rhoncus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse neque justo, porttitor eget volutpat sed, suscipit nec mauris. Etiam nec egestas purus. Praesent suscipit in elit cursus consectetur. Duis blandit pulvinar odio, eget volutpat magna vestibulum interdum. Ut sed ultrices risus, vel gravida nisi. Sed vitae rutrum felis. Aliquam at eros molestie, sagittis augue sed, venenatis erat. Praesent at consectetur tellus, ut vehicula nunc. Pellentesque aliquet condimentum neque, fermentum consequat neque viverra vel. Aliquam accumsan dignissim turpis vitae consequat. Aenean id justo vel diam sollicitudin posuere. Sed eu mauris ac elit porta commodo et varius sem.
+## Workflow at a glance
 
-## OAuth
+1. **Execute a batch** – Send a workflow and assets to `POST /batch/execute` and receive a `batchId`.
+2. **List or filter batches** – Use `GET /batches` to see your batches, optionally filtered by status, workflow, or date.
+3. **Check batch status** – Use `GET /batch/{batchId}/status` to see progress, asset counts, and timing.
+4. **Cancel (optional)** – Use `POST /batch/{batchId}/cancel` to stop a running or pending batch.
+5. **Get execution results** – Use `GET /batch/{batchId}/executions` to list per-asset results, outputs, and errors.
 
-Donec imperdiet tempus ligula, sit amet pellentesque justo pharetra quis. Duis sed lacus diam. Maecenas sollicitudin diam sit amet pharetra placerat. Aliquam egestas lectus et tellus sagittis, venenatis finibus nisi volutpat. Cras laoreet, nisl sed faucibus laoreet, nibh arcu pretium enim, eget elementum ligula tellus vitae lorem. Aenean consequat in lorem at venenatis. Phasellus consequat dolor in libero vulputate rutrum. Nulla sit amet augue fringilla, elementum libero eget, accumsan velit. Suspendisse et lorem ornare, congue justo vel, ultrices felis. Ut et aliquet eros. Nulla facilisi. Nulla vitae velit a enim egestas eleifend. Etiam malesuada orci non mollis vulputate. Praesent id augue eget sapien lobortis bibendum. Praesent placerat tellus dui, vel facilisis magna condimentum in.
+All batch endpoints require authentication (API key or Bearer token) and the headers `x-gw-ims-org-id`, `x-gw-ims-user-id`, and `x-api-key`. Results are scoped to the authenticated user; you only see batches you created. For more information on authentication, see the [Authentication](../getting-started/index.md) guide.
 
-<InlineAlert variant="info" slots="text"/>
+## Execute a batch of assets
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. In urna tellus, fringilla sit amet lorem eget, dignissim pellentesque ligula. Donec nec dolor vitae leo laoreet aliquam vehicula at dui. Integer in tortor lacus. Aliquam convallis, lorem ac consectetur sodales, tellus.
+Start a new batch with **POST /batch/execute**. You send a workflow definition and the API runs it for each asset in parallel.
 
-## JWT
+**Workflow format requirements:**
 
-Donec imperdiet tempus ligula, sit amet pellentesque justo pharetra quis. Duis sed lacus diam. Maecenas sollicitudin diam sit amet pharetra placerat. Aliquam egestas lectus et tellus sagittis, venenatis finibus nisi volutpat. Cras laoreet, nisl sed faucibus laoreet, nibh arcu pretium enim, eget elementum ligula tellus vitae lorem. Aenean consequat in lorem at venenatis. Phasellus consequat dolor in libero vulputate rutrum. Nulla sit amet augue fringilla, elementum libero eget, accumsan velit. Suspendisse et lorem ornare, congue justo vel, ultrices felis. Ut et aliquet eros. Nulla facilisi. Nulla vitae velit a enim egestas eleifend. Etiam malesuada orci non mollis vulputate. Praesent id augue eget sapien lobortis bibendum. Praesent placerat tellus dui, vel facilisis magna condimentum in.
+- Include a **workflowId** for tracking the batch (e.g. `"my-remove-bg-workflow"`).
+- The **workflow**  object will include a full workflow definition with `actions` and `connections`. Include all images in the `parameters.images` array of an `input-images` action; each image is processed separately through the workflow in parallel chunks.
+
+**Batch configuration (optional):**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `concurrencyLimit` | Max parallel executions per chunk (1–100). | 10 |
+| `priority` | Fair-share throttling: `HIGH`, `NORMAL`, or `LOW`. | NORMAL |
+| `continueOnError` | Keep processing remaining assets if some fail. | true |
+
+The response is **202 Accepted** and includes a **batchId**, batch **status** (e.g. pending, running), **assets** (counts), **config**, **createdAt**, and **links** for checking the batch status, canceling the batch, and listing the batch executions. Use the returned `batchId` for all later calls.
+
+## List batches
+
+Use **GET /batches** to list batches for the authenticated user. Results are filtered by your user and sorted by creation date (newest first). Pagination and filters are supported.
+
+**Query parameters:**
+
+- **status** – Filter by `pending`, `running`, `completed`, `failed`, or `cancelled`.
+- **workflowId** – Filter by workflow ID.
+- **createdAfter** / **createdBefore** – Filter by creation time (ISO 8601).
+- **limit** – Results per page (1–100, default 50).
+- **offset** – Pagination offset (default 0).
+
+The response includes **batches** (array of batch metadata), **pagination** (limit, offset, count, hasMore), and **filters** (the applied query values).
+
+## Get batch status
+
+Use **GET /batch/\{batchId}/status** to see current progress and details for a batch.
+
+You get:
+
+- **Overall status** – pending, running, completed, failed, or cancelled.
+- **Asset progress** – total, completed, failed, pending, processing.
+- **Execution statistics** – e.g. failed count and failed execution IDs for retry.
+- **Timing** – estimated time remaining and average execution time per asset.
+- **Configuration** – the batch config that was used.
+
+Use this to poll progress or to decide when to fetch execution results or cancel.
+
+## Cancel a batch
+
+Use **POST /batch/\{batchId}/cancel** to cancel a batch that is **pending** or **running**. No new assets are started; assets already in progress may still complete. The batch status becomes `cancelled`. You cannot cancel batches that are already completed, failed, or cancelled.
+
+The response includes the **batchId**, **status** (`cancelled`), **message**, **previousStatus**, and **assets** (current counts).
+
+## List execution results
+
+Use **GET /batch/\{batchId}/executions** to list per-asset execution results for a batch. You can filter and paginate the results.
+
+Each item includes:
+
+- **Execution status** – pending, running, success, or failed.
+- **Input asset** – index, assetId, inputs.
+- **Outputs** – result data when status is success.
+- **Error** – error message when status is failed.
+- **Timing** – startedAt, completedAt, durationMs.
+
+The response also includes **total** (number of assets in the batch), **executions** (array of results), and **pagination** (limit, offset, count, hasMore). Use this to collect outputs or to identify failed executions for retry.
+
+## Next steps
+
+- Try the endpoints with your workflow and assets using the [API reference](../api/index.md).
