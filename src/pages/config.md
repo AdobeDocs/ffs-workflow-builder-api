@@ -3,7 +3,7 @@
 
 - pages:
     - [All Firefly Services](https://developer.adobe.com/firefly-services/docs/guides/?aio_internal)
-    - [About Workflow Builder API (beta)](/index.md)
+    - [About Workflow Builder API](/index.md)
     - [Getting Started](/getting-started/index.md)
     - [Guides](/guides/index.md)
     - [API Reference](/api/index.md)
