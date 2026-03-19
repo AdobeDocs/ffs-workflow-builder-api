@@ -1,5 +1,5 @@
 ---
-title: Workflow Builder API (beta)
+title: Workflow Builder API
 description: Run published workflows over multiple assets at scale with batch execution, progress tracking, and per-asset results.
 hideBreadcrumbNav: true
 keywords:
@@ -15,7 +15,7 @@ keywords:
 
 ![Workflow Builder API Hero](design-hero.png)
 
-# Workflow Builder API (beta)
+# Workflow Builder API
 
 Run published workflows over many assets at scale with batch execution, progress tracking, and per-asset results.
 

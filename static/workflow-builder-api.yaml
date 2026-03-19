@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: FFE Run Workflow Service API
-  version: 0.1.0
+  version: 1.0.0
   description: |
     Firefly's Workflow Builder API for executing workflows over multiple assets and managing batch jobs.
   license:
