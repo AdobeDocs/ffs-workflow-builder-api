@@ -26,7 +26,7 @@ This feature guide offers an overview for using the API endpoints. For the full 
 4. **Cancel (optional)** – Use `POST /batch/{batchId}/cancel` to stop a running or pending batch.
 5. **Get execution results** – Use `GET /batch/{batchId}/executions` to list per-asset results, outputs, and errors.
 
-All batch endpoints require authentication (API key or Bearer token) and the headers `x-gw-ims-org-id`, `x-gw-ims-user-id`, and `x-api-key`. Results are scoped to the authenticated user; you only see batches you created. For more information on authentication, see the [Authentication](../getting-started/index.md) guide.
+All batch endpoints require authentication: send `Authorization: Bearer` with your S2S access token and `x-api-key` with your client ID. Results are scoped to the authenticated user; you only see batches you created. For more information on authentication, see the [Authentication](../getting-started/index.md) guide.
 
 ## Execute a batch of assets
 
