@@ -12,6 +12,10 @@ servers:
   - url: https://run-workflow.adobe.io
     description: Production environment (Adobe.io).
 
+security:
+  - AccessToken: []
+    X-Api-Key: []
+
 paths:
   /batch/execute:
     post:
@@ -24,13 +28,6 @@ paths:
 
         Returns a `batchId` that can be used to track progress and retrieve results.
       operationId: batchExecute
-      security:
-        - ApiKeyAuth: []
-          BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/OrgId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/ApiKey'
       requestBody:
         required: true
         content:
@@ -158,13 +155,7 @@ paths:
 
         Results are sorted by creation date (most recent first) and include pagination metadata.
       operationId: listBatches
-      security:
-        - ApiKeyAuth: []
-          BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/OrgId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/ApiKey'
         - name: status
           in: query
           description: Filter by batch status.
@@ -265,13 +256,7 @@ paths:
         - Timing information and estimates
         - Configuration details
       operationId: getBatchStatus
-      security:
-        - ApiKeyAuth: []
-          BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/OrgId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/ApiKey'
         - name: batchId
           in: path
           required: true
@@ -303,13 +288,7 @@ paths:
 
         Cannot cancel batches that are already completed, failed, or cancelled.
       operationId: cancelBatch
-      security:
-        - ApiKeyAuth: []
-          BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/OrgId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/ApiKey'
         - name: batchId
           in: path
           required: true
@@ -357,13 +336,7 @@ paths:
 
         The response supports pagination and filtering by execution status.
       operationId: listBatchExecutions
-      security:
-        - ApiKeyAuth: []
-          BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/OrgId'
-        - $ref: '#/components/parameters/UserId'
-        - $ref: '#/components/parameters/ApiKey'
         - name: batchId
           in: path
           required: true
@@ -428,40 +401,15 @@ paths:
 
 components:
   securitySchemes:
-    ApiKeyAuth:
+    AccessToken:
+      type: http
+      scheme: bearer
+      description: The Adobe-generated access token, S2S format.
+    X-Api-Key:
       type: apiKey
       in: header
       name: x-api-key
-      description: API key for authentication.
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token for authorization.
-
-  parameters:
-    OrgId:
-      name: x-gw-ims-org-id
-      in: header
-      required: true
-      description: Organization ID for the request.
-      schema:
-        type: string
-
-    UserId:
-      name: x-gw-ims-user-id
-      in: header
-      required: true
-      description: User ID for the request.
-      schema:
-        type: string
-
-    ApiKey:
-      name: x-api-key
-      in: header
-      required: true
-      description: API key for authentication.
-      schema:
-        type: string
+      description: The client ID for authentication.
 
   schemas:
     ErrorResponse:
