@@ -11,9 +11,9 @@ keywords:
   - API
 ---
 
-<Superhero slots="image, heading, text" background="rgb(225, 190, 185)" theme="dark" />
+<Superhero slots="image, heading, text" background="rgb(119, 151, 186)" theme="dark" />
 
-![Workflow Builder API Hero](design-hero.png)
+![Workflow Builder API Hero](workflow-builder-hero.png)
 
 # Workflow Builder API
 
