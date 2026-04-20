@@ -1,8 +1,9 @@
 ---
-title: Workflow Builder Feature Guide
-description: Learn how Workflow Builder API lets you execute workflows over multiple assets and manage batch jobs.
+title: Workflow API Feature Guide
+description: Learn how the Firefly Creative Production Workflow API lets you execute workflows over multiple assets and manage batch jobs.
 hideBreadcrumbNav: true
 keywords:
+  - firefly creative production
   - workflow
   - batch
   - features
@@ -12,9 +13,9 @@ keywords:
   - execute
 ---
 
-# Workflow Builder feature guide
+# Workflow API feature guide
 
-The Workflow Builder API (Firefly Creative Production for Enterprise) lets you execute workflows over multiple assets and manage batch jobs. You start a batch with a workflow and a set of images or videos, then monitor progress and retrieve results per asset.
+The Firefly Creative Production Workflow API lets you execute workflows over multiple assets and manage batch jobs. You start a batch with a workflow and a set of images or videos, then monitor progress and retrieve results per asset.
 
 This feature guide offers an overview for using the API endpoints. For the full technical details, see the [API reference](../api/index.md).
 
@@ -26,7 +27,20 @@ This feature guide offers an overview for using the API endpoints. For the full 
 4. **Cancel (optional)** – Use `POST /batch/{batchId}/cancel` to stop a running or pending batch.
 5. **Get execution results** – Use `GET /batch/{batchId}/executions` to list per-asset results, outputs, and errors.
 
-All batch endpoints require authentication: send `Authorization: Bearer` with your S2S access token and `x-api-key` with your client ID. Results are scoped to the authenticated user; you only see batches you created. For more information on authentication, see the [Authentication](../getting-started/index.md) guide.
+All batch endpoints require authentication (Bearer token). Results are scoped to the authenticated user; you only see batches you created. For more information on authentication, see the [Authentication](../getting-started/index.md) guide.
+
+## API contract version (api-version)
+
+Batch operations use an optional HTTP header **`api-version`** to select the public contract. The current value is **`1.0`**.
+
+| Behavior | Detail |
+| -------- | ------ |
+| **Omitted header** | The service assumes **`1.0`**. |
+| **Supported value** | Send **`api-version: 1.0`** to pin the contract explicitly. |
+| **Unsupported value** | The API returns **HTTP 400** with JSON `status: "error"` and a message naming the supported version. |
+| **Responses** | Successful and error responses on batch routes include an **`api-version`** response header so clients know which contract handled the call. |
+
+Full parameter and response header definitions are in the [API reference](../api/index.md).
 
 ## Execute a batch of assets
 
@@ -34,16 +48,8 @@ Start a new batch with **POST /batch/execute**. You send a workflow definition a
 
 **Workflow format requirements:**
 
-- Include a **workflowId** for tracking the batch (e.g. `"my-remove-bg-workflow"`).
-- The **workflow**  object will include a full workflow definition with `actions` and `connections`. Include all images in the `parameters.images` array of an `input-images` action; each image is processed separately through the workflow in parallel chunks.
-
-**Batch configuration (optional):**
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `concurrencyLimit` | Max parallel executions per chunk (1–100). | 10 |
-| `priority` | Fair-share throttling: `HIGH`, `NORMAL`, or `LOW`. | NORMAL |
-| `continueOnError` | Keep processing remaining assets if some fail. | true |
+- Include a **workflowId** Identifying the unique workflow to be run.
+- The **inputs**  array can support multiple arrays of inputs to denote workflow instances in a batch. Each workflow supports defining an array of inputs to be used when running individual workflow instances.
 
 The response is **202 Accepted** and includes a **batchId**, batch **status** (e.g. pending, running), **assets** (counts), **config**, **createdAt**, and **links** for checking the batch status, canceling the batch, and listing the batch executions. Use the returned `batchId` for all later calls.
 
@@ -63,7 +69,7 @@ The response includes **batches** (array of batch metadata), **pagination** (lim
 
 ## Get batch status
 
-Use **GET /batch/\{batchId}/status** to see current progress and details for a batch.
+Use **GET /batch/{batchId}/status** to see current progress and details for a batch.
 
 You get:
 
@@ -77,13 +83,13 @@ Use this to poll progress or to decide when to fetch execution results or cancel
 
 ## Cancel a batch
 
-Use **POST /batch/\{batchId}/cancel** to cancel a batch that is **pending** or **running**. No new assets are started; assets already in progress may still complete. The batch status becomes `cancelled`. You cannot cancel batches that are already completed, failed, or cancelled.
+Use **POST /batch/{batchId}/cancel** to cancel a batch that is **pending** or **running**. No new assets are started; assets already in progress may still complete. The batch status becomes `cancelled`. You cannot cancel batches that are already completed, failed, or cancelled.
 
 The response includes the **batchId**, **status** (`cancelled`), **message**, **previousStatus**, and **assets** (current counts).
 
 ## List execution results
 
-Use **GET /batch/\{batchId}/executions** to list per-asset execution results for a batch. You can filter and paginate the results.
+Use **GET /batch/{batchId}/executions** to list per-asset execution results for a batch. You can filter and paginate the results.
 
 Each item includes:
 

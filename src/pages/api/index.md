@@ -1,15 +1,15 @@
 ---
-title: Workflow Builder API Reference
-description: Firefly's API reference documentation for Workflow Builder API.
+title: Firefly Creative Production Workflow API Reference
+description: Firefly's API reference documentation for the Firefly Creative Production Workflow API.
 layout: none
 keywords:
-  - Workflow Builder
+  - Firefly Creative Production
   - API
   - Developer documentation
   - API documentation
-  - Workflow Builder API Reference
-  - Workflow Builder API Documentation
+  - Firefly Creative Production Workflow API Reference
+  - Firefly Creative Production Workflow API Documentation
 hideBreadcrumbNav: true
 ---
 
-<RedoclyAPIBlock src="/firefly-services/docs/workflow-builder-api/workflow-builder-api.yaml" hideTryItPanel scrollYOffset={64} generateCodeSamples="languages: [{lang: 'curl'}]" />
+<RedoclyAPIBlock src="/workflow-builder/workflow-builder-api.yaml" hideTryItPanel scrollYOffset={64} generateCodeSamples="languages: [{lang: 'curl'}]" />
