@@ -12,4 +12,4 @@ keywords:
 hideBreadcrumbNav: true
 ---
 
-<RedoclyAPIBlock src="/workflow-builder/workflow-builder-api.yaml" hideTryItPanel scrollYOffset={64} generateCodeSamples="languages: [{lang: 'curl'}]" />
+<RedoclyAPIBlock src="/firefly-services/docs/workflow-builder-api/workflow-builder-api.yaml" hideTryItPanel scrollYOffset={64} generateCodeSamples="languages: [{lang: 'curl'}]" />
