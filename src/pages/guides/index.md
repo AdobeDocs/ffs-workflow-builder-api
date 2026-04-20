@@ -69,7 +69,7 @@ The response includes **batches** (array of batch metadata), **pagination** (lim
 
 ## Get batch status
 
-Use **GET /batch/{batchId}/status** to see current progress and details for a batch.
+Use `GET /batch/{batchId}/status` to see current progress and details for a batch.
 
 You get:
 
@@ -83,13 +83,13 @@ Use this to poll progress or to decide when to fetch execution results or cancel
 
 ## Cancel a batch
 
-Use **POST /batch/{batchId}/cancel** to cancel a batch that is **pending** or **running**. No new assets are started; assets already in progress may still complete. The batch status becomes `cancelled`. You cannot cancel batches that are already completed, failed, or cancelled.
+Use `POST /batch/{batchId}/cancel` to cancel a batch that is **pending** or **running**. No new assets are started; assets already in progress may still complete. The batch status becomes `cancelled`. You cannot cancel batches that are already completed, failed, or cancelled.
 
 The response includes the **batchId**, **status** (`cancelled`), **message**, **previousStatus**, and **assets** (current counts).
 
 ## List execution results
 
-Use **GET /batch/{batchId}/executions** to list per-asset execution results for a batch. You can filter and paginate the results.
+Use `GET /batch/{batchId}/executions` to list per-asset execution results for a batch. You can filter and paginate the results.
 
 Each item includes:
 
