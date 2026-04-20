@@ -13,7 +13,7 @@
         - [Illustrator API](https://developer.adobe.com/firefly-services/docs/illustrator/?aio_internal) Docs and references for Illustrator API.
         - [Workflow Builder API](https://developer.adobe.com/firefly-services/docs/workflow-builder-api/?aio_internal) Docs and references for Workflow Builder API.
         - [Content Tagging API](https://experienceleague.adobe.com/docs/experience-platform/intelligent-services/content-commerce-ai/overview.html) Docs and references for Content Tagging services.
-    - [About Workflow Builder API](/index.md)
+    - [About Firefly Creative Production API](/index.md)
     - [Getting Started](/getting-started/index.md)
     - [Guides](/guides/index.md)
     - [API Reference](/api/index.md)
