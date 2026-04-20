@@ -37,8 +37,6 @@ To publish a workflow, first build a sequence of nodes in the authoring interfac
 
 When you are satisfied with the workflow, publish it directly from the interface.
 
-{/* Add step by step publication instructions here */}
-
 ## After you publish
 
 When publication has completed, the UI shows a confirmation that includes:

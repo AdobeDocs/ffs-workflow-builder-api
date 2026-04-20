@@ -14,12 +14,6 @@ keywords:
 
 This document has details about what's currently supported, limitations, and workarounds for the Workflow Builder API.
 
-<!-- 
-## Rate limits
-
-[Let's add rate limits here]
--->
-
 ## Supported storage solutions
 
 You can use these common cloud storage platforms with the Workflow Builder API:
