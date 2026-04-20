@@ -11,9 +11,9 @@
         - [InDesign API](https://developer.adobe.com/firefly-services/docs/indesign-apis/?aio_internal) Docs and references for InDesign API.
         - [Substance 3D API](https://developer.adobe.com/firefly-services/docs/s3dapi/?aio_internal) Unlock generative AI for rendering and object composites.
         - [Illustrator API](https://developer.adobe.com/firefly-services/docs/illustrator/?aio_internal) Docs and references for Illustrator API.
-        - [Workflow Builder API](https://developer.adobe.com/firefly-services/docs/workflow-builder-api/?aio_internal) Docs and references for Workflow Builder API.
+        - [Creative Production API](https://developer.adobe.com/firefly-services/docs/workflow-builder-api/?aio_internal) Docs and references for Workflow Builder API.
         - [Content Tagging API](https://experienceleague.adobe.com/docs/experience-platform/intelligent-services/content-commerce-ai/overview.html) Docs and references for Content Tagging services.
-    - [About Workflow Builder API](/index.md)
+    - [About Firefly Creative Production API](/index.md)
     - [Getting Started](/getting-started/index.md)
     - [Guides](/guides/index.md)
     - [API Reference](/api/index.md)
@@ -24,6 +24,11 @@
 
 - subPages:
     - Getting Started header
+    - [Project Setup](/getting-started/project-setup/index.md)
+    - [Create credentials](/getting-started/create-credentials/index.md)
+    - [Using Adobe Developer Console](/getting-started/developer-console/index.md)
     - [Authentication](/getting-started/index.md)
+    - [Technical usage notes](/getting-started/usage/index.md)
     - Guides header
-    - [Workflow Builder Feature Guide](/guides/index.md)
+    - [Firefly Creative Production feature guide](/guides/index.md)
+    - [Publish workflows](/guides/publishing/index.md)

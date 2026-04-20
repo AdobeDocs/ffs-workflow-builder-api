@@ -1,6 +1,6 @@
 ---
-title: Workflow Builder Authentication
-description: Learn how to set up and authenticate a project to use Workflow Builder API.
+title: Firefly Creative Production Workflow API Authentication
+description: Learn how to set up and authenticate a project to use the Firefly Creative Production Workflow API.
 hideBreadcrumbNav: true
 keywords:
 - authentication
@@ -11,11 +11,11 @@ keywords:
 ---
 # Authentication
 
-Learn how to authenticate requests to Workflow Builder API.
+Learn how to authenticate requests to the Firefly Creative Production Workflow API.
 
 ## Overview
 
-Every request made to Workflow Builder API must include an encrypted access token.
+Every request made to the Firefly Creative Production Workflow API must include an encrypted access token.
 
 Your secure, server-side application retrieves an access token by making a request to the [Adobe Identity Management System (IMS)](https://www.adobe.com/content/dam/cc/en/trust-center/ungated/whitepapers/corporate/adobe-identity-management-services-security-overview.pdf) with your **Client ID** and **Client Secret**.
 
@@ -24,7 +24,7 @@ Your secure, server-side application retrieves an access token by making a reque
 This tutorial assumes you have worked with your Adobe representative and have the following:
 
 - An [Adobe Developer Console](https://developer.adobe.com/) account.
-- A [project](https://developer.adobe.com/developer-console/docs/guides/projects/projects-empty/) with Workflow Builder API [OAuth Server-to-Server credentials set up](https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/).
+- A [project](https://developer.adobe.com/developer-console/docs/guides/projects/projects-empty/) with Firefly Creative Production Workflow API [OAuth Server-to-Server credentials set up](https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/).
 - Access to your **Client ID** and **Client Secret** from the [Adobe Developer Console project](https://developer.adobe.com/developer-console/docs/guides/services/services-add-api-oauth-s2s/#api-overview). Securely store these credentials and never expose them in client-side or public code.
 
 ## Retrieve an access token
