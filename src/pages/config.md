@@ -24,6 +24,10 @@
 
 - subPages:
     - Getting Started header
+    - [Project Setup](/getting-started/project-setup/index.md)
+    - [Create credentials](/getting-started/create-credentials/index.md)
+    - [Using Adobe Developer Console](/getting-started/developer-console/index.md)
     - [Authentication](/getting-started/index.md)
+    - [Technical usage notes](/getting-started/usage/index.md)
     - Guides header
     - [Workflow Builder Feature Guide](/guides/index.md)
