@@ -10,7 +10,6 @@ keywords:
   - workflow ID
   - programmatic execution
 ---
-
 # Publish workflows for Firefly Creative Production
 
 Use this guide to understand publishing Firefly Creative Production workflows so you can integrate them with other systems or run them at scale using an API.
@@ -38,7 +37,7 @@ To publish a workflow, first build a sequence of nodes in the authoring interfac
 
 When you are satisfied with the workflow, publish it directly from the interface.
 
-<!-- Add step by step publication instructions here -->
+{/* Add step by step publication instructions here */}
 
 ## After you publish
 

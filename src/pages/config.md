@@ -30,4 +30,5 @@
     - [Authentication](/getting-started/index.md)
     - [Technical usage notes](/getting-started/usage/index.md)
     - Guides header
-    - [Workflow Builder Feature Guide](/guides/index.md)
+    - [Firefly Creative Production feature guide](/guides/index.md)
+    - [Publish workflows](/guides/publishing/index.md)
