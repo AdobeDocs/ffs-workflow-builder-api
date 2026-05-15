@@ -1,3 +1,5 @@
+# .gitignore
+
 
 # OS and IDE generated files #
 ##############################
@@ -44,3 +46,7 @@ local-test.yml
 # yalc
 .yalc
 yalc.lock
+
+# Added by update-bot
+linter-output.txt
+linter-report.txt
