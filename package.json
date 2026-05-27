@@ -1,10 +1,10 @@
 {
-  "name": "dev-docs-template",
+  "name": "ffs-workflow-builder-api",
   "version": "1.0.0",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AdobeDocs/dev-docs-template"
+    "url": "https://github.com/AdobeDocs/ffs-workflow-builder-api"
   },
   "author": {
     "name": "Tim Kim",
