@@ -5,6 +5,24 @@ info:
   description: |
     Firefly Creative Production Workflow API for executing workflows and creating assets at scale.
 
+    ## Authentication
+
+    Every endpoint below requires all four of the following, together:
+    - `Authorization` header: ****** for authorization
+    - `x-api-key` header: API key for authentication
+    - `x-gw-ims-org-id` header: IMS organization ID, scopes the request to that organization
+    - `x-gw-ims-user-id` header: IMS user ID
+
+    ## Rate limiting
+
+    Rate limits are applied per organization and user. When exceeded, a request returns
+    **HTTP 429**. Responses include the current rate-limit window in these headers:
+    - `x-ratelimit-limit`: Maximum number of requests allowed
+    - `x-ratelimit-remaining`: Number of requests remaining
+    - `x-ratelimit-reset`: Unix timestamp when the rate limit resets
+
+    ## Contract versioning
+
     Runtime batch requests use the HTTP header `api-version` to pin the API version.
 
     - If you **omit** `api-version`, the service assumes **`1.0`**.
@@ -21,6 +39,10 @@ servers:
 tags:
   - name: Batches
     description: Execute published workflows over multiple assets, list batches, monitor status, cancel jobs, and retrieve per-asset results
+  - name: Workflows
+    description: Publish, read, update, and delete workflows, manage in-progress drafts, and preview a workflow before publishing
+  - name: Catalog
+    description: Discover the actions available for building workflow definitions programmatically
 
 paths:
   /batch/execute:
@@ -39,8 +61,11 @@ paths:
       operationId: batchExecute
       security:
         - BearerAuth: []
+          ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
       requestBody:
         required: true
         content:
@@ -103,6 +128,8 @@ paths:
                     href: "https://run-workflow.adobe.io/batch/batch-run-workflow_2402b5a2-bd2b-4309-a4a4-d7983bba64e9-20260403-750642eb/executions"
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -123,8 +150,11 @@ paths:
       operationId: listBatches
       security:
         - BearerAuth: []
+          ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
         - name: status
           in: query
           description: Filter by batch status.
@@ -245,8 +275,11 @@ paths:
       operationId: getBatchStatus
       security:
         - BearerAuth: []
+          ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
         - name: batchId
           in: path
           required: true
@@ -290,6 +323,8 @@ paths:
                     href: "https://run-workflow.adobe.io/batch/batch-run-workflow_a1b2c3d4-e5f6-7890-abcd-ef1234567890-20260415-abc12301/executions"
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -310,8 +345,11 @@ paths:
       operationId: cancelBatch
       security:
         - BearerAuth: []
+          ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
         - name: batchId
           in: path
           required: true
@@ -342,6 +380,8 @@ paths:
                     $ref: '#/components/schemas/BatchAssetCounts'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -366,8 +406,11 @@ paths:
       operationId: listBatchExecutions
       security:
         - BearerAuth: []
+          ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
         - name: batchId
           in: path
           required: true
@@ -428,6 +471,879 @@ paths:
                         type: boolean
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /catalog/actions:
+    get:
+      tags:
+        - Catalog
+      summary: List catalog actions
+      description: |
+        Returns every workflow action available for building or introspecting workflow
+        definitions programmatically. Results include Adobe's built-in actions
+        (`orgId: "adobe"`) plus any custom actions registered under the caller's own
+        organization.
+      operationId: listCatalogActions
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - name: workflowEnabled
+          in: query
+          description: Filter to only actions enabled for the workflow builder UI.
+          schema:
+            type: boolean
+        - name: category
+          in: query
+          description: Filter to a single category (for example `image`).
+          schema:
+            type: string
+        - name: tags
+          in: query
+          description: Comma-separated tags. An action must have all of them (AND logic).
+          schema:
+            type: string
+          example: "image,firefly"
+        - name: compact
+          in: query
+          description: |
+            Return the minimal `CompactCatalogAction` shape (`actionType`, `description`,
+            `disabled`, `workflowEnabled`) instead of the full entry.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Catalog actions retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogActionsResponse'
+              example:
+                catalogVersion: "2026.09.1"
+                totalActions: 2
+                categories: ["image"]
+                actions:
+                  - actionType: "remove-background"
+                    version: "1.0.0"
+                    lifecycle: "ga"
+                    name: "Remove Background"
+                    description: "Removes the background from an image."
+                    category: "image"
+                    disabled: false
+                    workflowEnabled: true
+                    inputs:
+                      - name: "image"
+                        type: "image"
+                        required: true
+                        mimeTypes: ["image/png", "image/jpeg"]
+                    outputs:
+                      - name: "result"
+                        type: "image"
+                        mimeTypes: ["image/png"]
+                    parameters: []
+                    tags: ["image", "firefly"]
+                  - actionType: "input-images"
+                    version: "1.0.0"
+                    lifecycle: "ga"
+                    name: "Input Images"
+                    description: "Source node that provides one or more input images to a workflow."
+                    category: "image"
+                    disabled: false
+                    workflowEnabled: true
+                    inputs: []
+                    outputs:
+                      - name: "images"
+                        type: "image"
+                        mimeTypes: ["image/png", "image/jpeg"]
+                    parameters: []
+                    tags: ["image", "input"]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /catalog/actions/{actionType}:
+    get:
+      tags:
+        - Catalog
+      summary: Get a specific catalog action
+      description: |
+        Returns detailed info for a single action, including its input/output ports and
+        configurable parameters.
+      operationId: getCatalogAction
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: actionType
+          in: path
+          required: true
+          description: Action type identifier.
+          schema:
+            type: string
+          example: "remove-background"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - name: version
+          in: query
+          description: |
+            Specific semantic version to fetch. Omitted resolves the caller-visible
+            default (latest active version).
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogAction'
+              example:
+                actionType: "remove-background"
+                version: "1.0.0"
+                lifecycle: "ga"
+                name: "Remove Background"
+                description: "Removes the background from an image."
+                category: "image"
+                disabled: false
+                workflowEnabled: true
+                inputs:
+                  - name: "image"
+                    type: "image"
+                    required: true
+                    mimeTypes: ["image/png", "image/jpeg"]
+                outputs:
+                  - name: "result"
+                    type: "image"
+                    mimeTypes: ["image/png"]
+                parameters: []
+                tags: ["image", "firefly"]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No action matches the given `actionType` for the caller's org.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Action type 'unknown-action' not found in catalog"
+                status: "failed"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /workflows:
+    get:
+      tags:
+        - Workflows
+      summary: List or get workflows
+      description: |
+        Lists workflows for the caller's organization, or retrieves a specific workflow
+        with its full definition and execution history.
+
+        Provide `workflowId` to retrieve a specific workflow. Otherwise, results are
+        listed and can be filtered/paginated with the query parameters below.
+      operationId: getWorkflows
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+        - name: workflowId
+          in: query
+          description: Get a specific workflow by ID (UUID). Omit to list workflows instead.
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum number of results per page.
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: offset
+          in: query
+          description: Pagination offset.
+          schema:
+            type: integer
+            default: 0
+        - name: scope
+          in: query
+          description: |
+            Set to `org` for the org-wide published list (published workflows visible to
+            everyone in the org, not just the author). Omit for the default caller-scoped
+            behavior (the caller's own workflows).
+          schema:
+            type: string
+            enum:
+              - org
+      responses:
+        '200':
+          description: Workflows retrieved successfully.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/WorkflowListResponse'
+                  - $ref: '#/components/schemas/WorkflowDetailResponse'
+              examples:
+                workflowList:
+                  summary: List of workflows
+                  value:
+                    workflows:
+                      - workflowId: "550e8400-e29b-41d4-a716-446655440000"
+                        name: "Product photo cleanup"
+                        status: "active"
+                        workflowType: "run-workflow"
+                        createdAt: "2026-04-15T14:22:10.120Z"
+                        updatedAt: "2026-04-15T14:23:45.880Z"
+                        publishedAt: "2026-04-15T14:23:45.880Z"
+                workflowDetail:
+                  summary: Single workflow detail (workflowId supplied)
+                  value:
+                    workflowId: "550e8400-e29b-41d4-a716-446655440000"
+                    name: "Product photo cleanup"
+                    status: "active"
+                    workflowType: "run-workflow"
+                    version: "1"
+                    workflow:
+                      actions: []
+                      connections: []
+                    executionCount: 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /publish:
+    post:
+      tags:
+        - Workflows
+      summary: Publish a workflow
+      description: |
+        Publishes a workflow, making it available for execution via `/execute`,
+        `/batch/execute`, and `/preview`.
+
+        If a workflow with the same `metadata.workflowId` already exists for the caller,
+        the existing UUID is reused; otherwise a new UUID is generated and returned.
+      operationId: publishWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishWorkflowRequest'
+            example:
+              workflow:
+                metadata:
+                  workflowId: "my-workflow-001"
+                  name: "Product photo cleanup"
+                actions:
+                  - actionId: "action-1"
+                    actionType: "input-images"
+                  - actionId: "action-2"
+                    actionType: "remove-background"
+                connections:
+                  - connectionId: "conn-1"
+                    connectionSource: "action-1"
+                    sourcePort: "images"
+                    connectionTarget: "action-2"
+                    targetPort: "image"
+      responses:
+        '200':
+          description: Workflow published successfully.
+          headers:
+            x-ratelimit-limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            x-ratelimit-remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            x-ratelimit-reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishWorkflowResponse'
+              examples:
+                newWorkflow:
+                  summary: New workflow created
+                  value:
+                    status: "succeeded"
+                    workflowId: "550e8400-e29b-41d4-a716-446655440000"
+                    action: "created"
+                    metadataWorkflowId: "my-workflow-001"
+                reusedWorkflow:
+                  summary: Existing workflow reused (same metadata.workflowId)
+                  value:
+                    status: "succeeded"
+                    workflowId: "550e8400-e29b-41d4-a716-446655440000"
+                    action: "reused"
+                    metadataWorkflowId: "my-workflow-001"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /draft/{workflowId}:
+    put:
+      tags:
+        - Workflows
+      summary: Save a workflow draft
+      description: |
+        Saves an in-progress, unpublished draft of a workflow so it can be resumed later
+        without publishing it.
+      operationId: saveDraftWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: |
+            Stable workflow id for the draft (mint a new UUID for a brand-new draft, or
+            reuse an existing workflow's id to save a new draft version of it).
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDraftRequest'
+            example:
+              matrix:
+                actions:
+                  - actionId: "action-1"
+                    actionType: "input-images"
+                connections: []
+              name: "Product photo cleanup (draft)"
+      responses:
+        '200':
+          description: Draft saved.
+          headers:
+            x-ratelimit-limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            x-ratelimit-remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            x-ratelimit-reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveDraftResponse'
+              example:
+                status: "succeeded"
+                workflowId: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            Either the caller is not a member of the requested organization, or an
+            existing workflow with this id belongs to a different author (a draft save
+            never overwrites another user's workflow).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                orgMismatch:
+                  summary: Header-derived org does not belong to the caller
+                  value:
+                    error: "You do not have permission to access drafts for workflows in this organization."
+                notAuthor:
+                  summary: Existing workflow belongs to a different author
+                  value:
+                    status: "failed"
+                    error: "You are not the author of this workflow and cannot save changes to it."
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags:
+        - Workflows
+      summary: Get a workflow's in-progress draft
+      description: |
+        Returns a short-lived, read-only URL to the caller's own draft, plus the last
+        update time so the caller can detect a stale local copy.
+      operationId: readDraftWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: The workflow whose in-progress draft should be read.
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: A read-only URL to the caller's own draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadDraftResponse'
+              example:
+                sasUrl: "https://storage.example.com/A1B2C3D4567890ABCDEFFEDA51@AdobeOrg/550e8400/versions/draft/workflow.ui.json?sig=..."
+                expiresAt: "2026-07-18T00:15:00.000Z"
+                workflowId: "550e8400-e29b-41d4-a716-446655440000"
+                updatedAt: "2026-07-17T23:50:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No draft exists for this workflow, or it belongs to a different caller.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Draft not found"
+                status: "failed"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      tags:
+        - Workflows
+      summary: Discard a workflow's in-progress draft
+      description: |
+        Discards a workflow's in-progress draft. If the workflow has a live published
+        version, that published version is kept and the workflow reverts to `active`;
+        otherwise (a draft that was never published) the whole workflow is removed.
+      operationId: discardDraftWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: The workflow whose in-progress draft should be discarded.
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Draft discarded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveDraftResponse'
+              example:
+                status: "succeeded"
+                workflowId: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            Either the caller is not a member of the requested organization, or the
+            workflow belongs to a different author.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                orgMismatch:
+                  summary: Header-derived org does not belong to the caller
+                  value:
+                    error: "You do not have permission to access drafts for workflows in this organization."
+                notAuthor:
+                  summary: Workflow belongs to a different author
+                  value:
+                    status: "failed"
+                    error: "You are not the author of this workflow and cannot delete it."
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /workflows/{workflowId}/metadata:
+    patch:
+      tags:
+        - Workflows
+      summary: Update a workflow's name or description
+      description: |
+        Updates the `name`/`description` of a workflow, without a full publish. A key
+        present in the body but set to `""` clears that field; a key omitted entirely
+        leaves it untouched. At least one of `name`/`description` must be present.
+      operationId: updateWorkflowMetadata
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New workflow display name.
+                description:
+                  type: string
+                  description: New workflow description.
+            example:
+              name: "Renamed workflow"
+      responses:
+        '200':
+          description: Workflow metadata updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveDraftResponse'
+              example:
+                status: "succeeded"
+                workflowId: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /unpublish/{workflowId}:
+    put:
+      tags:
+        - Workflows
+      summary: Unpublish a workflow
+      description: |
+        Unpublishes a published workflow: it is no longer returned by `GET /workflows`
+        (default scope) and can no longer be executed. The workflow is retained (not
+        deleted) and reverts to an editable draft — republishing resumes from there.
+        Unpublishing also revokes any shares for the workflow.
+      operationId: unpublishWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: The published workflow's UUID.
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Workflow successfully unpublished.
+          headers:
+            x-ratelimit-limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            x-ratelimit-remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            x-ratelimit-reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveDraftResponse'
+              example:
+                status: "succeeded"
+                workflowId: "550e8400-e29b-41d4-a716-446655440000"
+                message: "Workflow successfully unpublished"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The workflow has a draft version that must be published or deleted before
+            unpublishing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "failed"
+                error: "DRAFT_VERSION_EXISTS"
+                message: "This workflow has a draft version. Please publish or delete the draft version before unpublishing."
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /workflow/{workflowId}:
+    delete:
+      tags:
+        - Workflows
+      summary: Delete a workflow
+      description: |
+        Permanently deletes a workflow: its published version(s), execution history, any
+        in-progress draft, and any shares.
+      operationId: deleteWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          description: The workflow to delete.
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Workflow deleted.
+          headers:
+            x-ratelimit-limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            x-ratelimit-remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            x-ratelimit-reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveDraftResponse'
+              example:
+                status: "succeeded"
+                workflowId: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /preview:
+    post:
+      tags:
+        - Workflows
+      summary: Preview a workflow
+      description: |
+        Runs a workflow definition without publishing it first — useful for testing a
+        workflow while building it. Returns links for polling status and cancelling.
+      operationId: previewWorkflow
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviewWorkflowRequest'
+            example:
+              metadata:
+                workflowId: "my-workflow-001"
+                name: "Product photo cleanup"
+              actions:
+                - actionId: "action-1"
+                  actionType: "input-images"
+                  parameters:
+                    images:
+                      - name: "photo.jpg"
+                        sourceUrl: "https://example.com/photo.jpg"
+                - actionId: "action-2"
+                  actionType: "remove-background"
+              connections:
+                - connectionId: "conn-1"
+                  connectionSource: "action-1"
+                  sourcePort: "images"
+                  connectionTarget: "action-2"
+                  targetPort: "image"
+      responses:
+        '200':
+          description: Workflow preview started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewWorkflowResponse'
+              example:
+                links:
+                  result:
+                    href: "https://run-workflow.adobe.io/preview/9f8e7d6c-5b4a-3210-fedc-ba9876543210"
+                  cancel:
+                    href: "https://run-workflow.adobe.io/preview/9f8e7d6c-5b4a-3210-fedc-ba9876543210/cancel"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: |
+            An `Idempotency-Key` was reused with a different request body than the
+            original request that used it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Idempotency key conflict"
+                status: "failed"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /preview/{instanceId}:
+    post:
+      tags:
+        - Workflows
+      summary: Query workflow preview status
+      description: Retrieves the current status of a workflow preview.
+      operationId: queryPreviewStatus
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: instanceId
+          in: path
+          required: true
+          description: The instance ID returned by `POST /preview`.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Preview status retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewStatusResponse'
+              example:
+                instanceId: "9f8e7d6c-5b4a-3210-fedc-ba9876543210"
+                runtimeStatus: "Completed"
+                output:
+                  result:
+                    href: "https://storage.example.com/output/result.png?sig=..."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /preview/{instanceId}/cancel:
+    post:
+      tags:
+        - Workflows
+      summary: Cancel a workflow preview
+      description: Cancels a running workflow preview.
+      operationId: cancelPreview
+      security:
+        - BearerAuth: []
+          ApiKeyAuth: []
+      parameters:
+        - name: instanceId
+          in: path
+          required: true
+          description: The instance ID of the workflow preview to cancel.
+          schema:
+            type: string
+        - $ref: '#/components/parameters/OrgId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Cancellation request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewCancelResponse'
+              example:
+                message: "Cancellation request accepted"
+                instanceId: "9f8e7d6c-5b4a-3210-fedc-ba9876543210"
+                status: "canceling"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -449,6 +1365,23 @@ components:
           - "1.0"
         default: "1.0"
 
+    OrgId:
+      name: x-gw-ims-org-id
+      in: header
+      required: true
+      description: IMS organization ID for the authenticated caller. Scopes every request to that organization.
+      schema:
+        type: string
+      example: "A1B2C3D4567890ABCDEFFEDA51@AdobeOrg"
+
+    UserId:
+      name: x-gw-ims-user-id
+      in: header
+      required: true
+      description: IMS user ID for the authenticated caller.
+      schema:
+        type: string
+
   headers:
     ApiVersionResponse:
       description: |
@@ -457,11 +1390,31 @@ components:
         type: string
         example: "1.0"
 
+    RateLimitLimit:
+      description: Maximum number of requests allowed in the current rate-limit window.
+      schema:
+        type: integer
+
+    RateLimitRemaining:
+      description: Number of requests remaining in the current rate-limit window.
+      schema:
+        type: integer
+
+    RateLimitReset:
+      description: Unix timestamp (seconds) when the current rate-limit window resets.
+      schema:
+        type: integer
+
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       description: Bearer token for authorization.
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for authentication. Required together with the bearer token and the `x-gw-ims-org-id`/`x-gw-ims-user-id` headers.
 
   schemas:
     BatchExecuteRequest:
@@ -521,6 +1474,7 @@ components:
     BatchNodeInputContentAssets:
       type: object
       description: Maps a workflow node to one or more image (or binary) inputs via presigned URLs.
+      additionalProperties: false
       required:
         - node_id
         - content
@@ -539,6 +1493,7 @@ components:
     BatchNodeInputContentText:
       type: object
       description: Maps a workflow node to a text input value.
+      additionalProperties: false
       required:
         - node_id
         - content
@@ -555,6 +1510,7 @@ components:
     BatchNodeInputTemplate:
       type: object
       description: Maps a workflow node to a template file via presigned URL.
+      additionalProperties: false
       required:
         - node_id
         - template
@@ -717,7 +1673,7 @@ components:
       description: Paginated list of batches for the authenticated user within their organization.
       required:
         - orgId
-        - Batches
+        - batches
         - pagination
       properties:
         orgId:
@@ -947,6 +1903,440 @@ components:
           type: integer
           description: Duration in milliseconds.
 
+    CatalogPort:
+      type: object
+      description: An action's input or output port definition.
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          description: Port name.
+        label:
+          type: string
+          description: Human-readable display label.
+        type:
+          type: string
+          description: Port type (for example `image`, `text`, `video`, `asset`, `any`).
+        required:
+          type: boolean
+          description: Whether this port is required (input ports only).
+        mimeTypes:
+          type: array
+          items:
+            type: string
+          description: Supported MIME types.
+
+    CatalogParameter:
+      type: object
+      description: An action's configurable parameter definition.
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+          description: Human-readable label.
+        type:
+          type: string
+          enum:
+            - string
+            - number
+            - boolean
+            - object
+            - array
+          description: The JSON value shape of this parameter.
+        required:
+          type: boolean
+        defaultValue:
+          description: Default value, typed per `type`.
+        description:
+          type: string
+
+    CatalogAction:
+      type: object
+      description: A single action entry in the catalog.
+      required:
+        - actionType
+        - version
+        - name
+        - description
+        - category
+        - disabled
+        - workflowEnabled
+        - inputs
+        - outputs
+        - parameters
+        - tags
+      properties:
+        actionType:
+          type: string
+          description: Canonical action identifier (kebab-case).
+        version:
+          type: string
+          description: Semantic version.
+        lifecycle:
+          type: string
+          enum:
+            - preview
+            - beta
+            - ga
+            - deprecated
+          description: Lifecycle state.
+        name:
+          type: string
+          description: Human-readable action name.
+        description:
+          type: string
+        category:
+          type: string
+          description: Grouping category (for example `image`).
+        disabled:
+          type: boolean
+        workflowEnabled:
+          type: boolean
+          description: Whether this action is visible in the workflow builder UI.
+        workflowRole:
+          type: string
+          enum:
+            - source
+            - sink
+            - processing
+          description: Role in workflow graph validation. Defaults to `processing` when omitted.
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogPort'
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogPort'
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogParameter'
+        tags:
+          type: array
+          items:
+            type: string
+
+    CompactCatalogAction:
+      type: object
+      description: |
+        Minimal catalog entry shape, returned instead of `CatalogAction` when
+        `?compact=true` is set on `GET /catalog/actions`.
+      additionalProperties: false
+      required:
+        - actionType
+        - description
+        - disabled
+        - workflowEnabled
+      properties:
+        actionType:
+          type: string
+        description:
+          type: string
+        disabled:
+          type: boolean
+        workflowEnabled:
+          type: boolean
+
+    CatalogActionsResponse:
+      type: object
+      description: Response body for `GET /catalog/actions`.
+      required:
+        - totalActions
+        - categories
+        - actions
+      properties:
+        catalogVersion:
+          type: string
+        totalActions:
+          type: integer
+        categories:
+          type: array
+          items:
+            type: string
+          description: Ordered list of category identifiers.
+        actions:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/CatalogAction'
+              - $ref: '#/components/schemas/CompactCatalogAction'
+          description: '`CompactCatalogAction` when the request set `?compact=true`, otherwise `CatalogAction`.'
+
+    WorkflowAction:
+      type: object
+      description: A single action (node) in a workflow definition.
+      properties:
+        actionId:
+          type: string
+          description: Unique identifier for this action within the workflow.
+        actionType:
+          type: string
+          description: Catalog action type this node runs (see `GET /catalog/actions`).
+        parameters:
+          type: object
+          description: Action-specific parameters, per the catalog action's parameter definitions.
+
+    WorkflowConnection:
+      type: object
+      description: A connection between two actions' ports in a workflow definition.
+      properties:
+        connectionId:
+          type: string
+        connectionSource:
+          type: string
+          description: Source action ID.
+        sourcePort:
+          type: string
+          description: Source port name.
+        connectionTarget:
+          type: string
+          description: Target action ID.
+        targetPort:
+          type: string
+          description: Target port name.
+
+    WorkflowDefinition:
+      type: object
+      description: A workflow's actions and connections, plus identifying metadata.
+      properties:
+        metadata:
+          type: object
+          properties:
+            workflowId:
+              type: string
+              description: Caller-supplied workflow identifier (used to detect reuse on republish).
+            name:
+              type: string
+            description:
+              type: string
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowAction'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowConnection'
+
+    WorkflowListResponse:
+      type: object
+      description: Paginated list of workflows for the authenticated caller (or the whole org, with `scope=org`).
+      properties:
+        workflows:
+          type: array
+          items:
+            type: object
+            properties:
+              workflowId:
+                type: string
+                format: uuid
+              name:
+                type: string
+                nullable: true
+              description:
+                type: string
+                nullable: true
+              status:
+                type: string
+                description: Current workflow status (for example `active`, `draft`, `unpublished`).
+              workflowType:
+                type: string
+                enum:
+                  - matrix
+                  - run-workflow
+              createdAt:
+                type: string
+                format: date-time
+                nullable: true
+              updatedAt:
+                type: string
+                format: date-time
+                nullable: true
+              publishedAt:
+                type: string
+                format: date-time
+                nullable: true
+
+    WorkflowDetailResponse:
+      type: object
+      description: A single workflow with its full definition and execution history, returned when `workflowId` is supplied to `GET /workflows`.
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        status:
+          type: string
+        workflowType:
+          type: string
+          enum:
+            - matrix
+            - run-workflow
+        version:
+          type: string
+        workflow:
+          $ref: '#/components/schemas/WorkflowDefinition'
+        executionCount:
+          type: integer
+          description: Number of executions.
+        executions:
+          type: array
+          items:
+            type: object
+            properties:
+              executionId:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+              actionsUrl:
+                type: string
+                format: uri
+
+    PublishWorkflowRequest:
+      type: object
+      required:
+        - workflow
+      properties:
+        workflow:
+          $ref: '#/components/schemas/WorkflowDefinition'
+
+    PublishWorkflowResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - succeeded
+            - failed
+        workflowId:
+          type: string
+          format: uuid
+          description: Storage UUID for the published workflow.
+        action:
+          type: string
+          enum:
+            - created
+            - reused
+          description: Whether a new workflow UUID was minted, or an existing one (matching `metadata.workflowId`) was reused.
+        metadataWorkflowId:
+          type: string
+          description: Echo of the `workflow.metadata.workflowId` supplied in the request.
+
+    SaveDraftRequest:
+      type: object
+      required:
+        - matrix
+      properties:
+        matrix:
+          $ref: '#/components/schemas/WorkflowDefinition'
+        name:
+          type: string
+          description: Workflow display name.
+        description:
+          type: string
+          description: Optional workflow description.
+
+    SaveDraftResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - succeeded
+        workflowId:
+          type: string
+        message:
+          type: string
+
+    ReadDraftResponse:
+      type: object
+      properties:
+        sasUrl:
+          type: string
+          description: Short-lived, read-only URL to the draft's stored workflow definition.
+        expiresAt:
+          type: string
+          format: date-time
+        workflowId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last-write time for this draft.
+
+    PreviewWorkflowRequest:
+      type: object
+      description: Workflow definition to preview (same shape as `PublishWorkflowRequest.workflow`, but not wrapped in a `workflow` key).
+      allOf:
+        - $ref: '#/components/schemas/WorkflowDefinition'
+
+    PreviewWorkflowResponse:
+      type: object
+      properties:
+        links:
+          type: object
+          properties:
+            result:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                  description: URL to query preview status.
+            cancel:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: uri
+                  description: URL to cancel the preview.
+
+    PreviewStatusResponse:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        runtimeStatus:
+          type: string
+          enum:
+            - Running
+            - Completed
+            - Failed
+            - Canceled
+            - Terminated
+          description: Current status of the preview run.
+        output:
+          type: object
+          description: Output data from the preview (when completed).
+        createdTime:
+          type: string
+          format: date-time
+        lastUpdatedTime:
+          type: string
+          format: date-time
+
+    PreviewCancelResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Cancellation request accepted"
+        instanceId:
+          type: string
+        status:
+          type: string
+          example: "canceling"
+
   responses:
     BadRequest:
       description: |
@@ -999,4 +2389,49 @@ components:
           example:
             error: "Unauthorized"
             message: "Missing or invalid authentication"
+            status: "failed"
+
+    Forbidden:
+      description: |
+        The caller is not a member of the organization identified by `x-gw-ims-org-id`,
+        or the requested resource belongs to a different user or organization.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "You do not have permission to access this resource in this organization."
+            status: "failed"
+
+    TooManyRequests:
+      description: |
+        Rate limit exceeded for this organization or user. Retry after the window
+        indicated by the `x-ratelimit-reset` response header resets.
+      headers:
+        x-ratelimit-limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        x-ratelimit-remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+        x-ratelimit-reset:
+          $ref: '#/components/headers/RateLimitReset'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Rate limit exceeded"
+            message: "Too many requests. Please retry after the window resets."
+            status: "failed"
+
+    ServiceUnavailable:
+      description: |
+        Organization membership could not be verified transiently (an upstream
+        identity check returned a 5xx or timed out). The request was not attempted.
+        Retry with backoff.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unable to verify organization access at this time. Please try again."
             status: "failed"
